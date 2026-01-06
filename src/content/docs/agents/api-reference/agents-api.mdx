@@ -127,6 +127,11 @@ class MyAgent extends Agent<Env, State> {
 		console.log("State updated:", state, "Source:", source);
 	}
 
+	// Handle SQL execution errors. Override this method to customize logging behavior.
+	onSqlError(query: string, error: unknown): void {
+		console.error(`failed to execute sql query: ${query}`, error);
+	}
+
 	// You can define your own custom methods to be called by requests,
 	// WebSocket messages, or scheduled tasks
 	async customProcessingMethod(data: any) {
@@ -595,6 +600,53 @@ export class YourAgent extends Agent {
 Visit the [state management API documentation](/agents/api-reference/store-and-sync-state/) within the Agents SDK, including the native `state` APIs and the built-in `this.sql` API for storing and querying data within your Agents.
 
 :::
+
+### Error handling hooks
+
+The Agent class provides hooks to customize error handling behavior.
+
+#### onSqlError
+
+Handle SQL execution errors. Override this method to customize logging behavior for SQL errors.
+
+```ts
+class Agent<Env, State = unknown> {
+	// Handle SQL execution errors
+	// Override this method to customize logging behavior
+	onSqlError(query: string, error: unknown): void;
+}
+```
+
+<TypeScriptExample>
+
+```ts
+// Example of customizing SQL error handling
+export class YourAgent extends Agent {
+	// Override onSqlError to send errors to a monitoring service
+	onSqlError(query: string, error: unknown): void {
+		// Log to your monitoring service instead of console
+		this.env.MONITORING?.logError({
+			type: "sql_error",
+			query: query,
+			error: error instanceof Error ? error.message : String(error),
+			timestamp: Date.now(),
+		});
+
+		// You can still log to console if needed
+		console.error(`SQL error for query: ${query}`, error);
+	}
+
+	async getUserData(userId: string) {
+		// If this query fails, onSqlError will be called automatically
+		const users = this.sql`
+      SELECT * FROM users WHERE id = ${userId}
+    `;
+		return users[0];
+	}
+}
+```
+
+</TypeScriptExample>
 
 ### MCP Client API
 
